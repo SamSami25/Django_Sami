@@ -5,10 +5,33 @@
     <title>Resultado</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #fce7f3; font-family: Arial, sans-serif; text-align: center; }
+        body { 
+            background: #fce7f3; 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 20px;
+        }
         h1 { color: #9d174d; }
+        p { font-size: 1.1em; }
+        p.mensaje { 
+            font-size: 1.2em; 
+            color: #7c3aed; 
+            font-weight: bold; 
+            margin: 20px 0;
+        }
+        a.btn { 
+            display: inline-block; 
+            margin: 20px 0; 
+            padding: 10px 20px; 
+            background-color: #7c3aed; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 8px; 
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        a.btn:hover { background-color: #5b21b6; }
         canvas { margin-top: 20px; }
-        p.mensaje { font-size:1.2em; color:#7c3aed; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -19,23 +42,36 @@
 
     <p class="mensaje">{{ mensaje }}</p>
 
+    <!-- Botón para descargar Excel -->
+    <a href="{% url 'exportar_excel' %}" class="btn">📥 Descargar resultados en Excel</a>
+
+    <!-- Gráfico de barras -->
     <canvas id="grafico" width="400" height="200"></canvas>
 
     <script>
+        // Variables de Django convertidas a JS
+        const labels = {{ datos.labels|safe }};
+        const valores = {{ datos.valores|safe }};
+        const colores = {{ datos.colores|safe }};
+
         const ctx = document.getElementById('grafico').getContext('2d');
         const chart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: {{ datos.labels|safe }},
+                labels: labels,
                 datasets: [{
                     label: 'Nivel por pregunta',
-                    data: {{ datos.valores|safe }},
-                    backgroundColor: {{ datos.colores|safe }},
+                    data: valores,
+                    backgroundColor: colores,
                     borderColor: '#000',
                     borderWidth: 1
                 }]
             },
-            options: { scales: { y: { beginAtZero: true, max: 4 } } }
+            options: { 
+                scales: { y: { beginAtZero: true, max: 4 } },
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
         });
     </script>
 </body>

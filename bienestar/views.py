@@ -1,67 +1,89 @@
 from django.shortcuts import render
-import openpyxl
-import os
+from django.http import HttpResponse
+import xlsxwriter
+from io import BytesIO
 
-# Guardar resultados en Excel
-def guardar_resultado_excel(nombre, genero, puntaje, porcentaje):
-    archivo = "resultados.xlsx"
-    if not os.path.exists(archivo):
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.append(["Nombre", "Género", "Puntaje", "Porcentaje"])
-        wb.save(archivo)
-
-    wb = openpyxl.load_workbook(archivo)
-    ws = wb.active
-    ws.append([nombre, genero, puntaje, f"{porcentaje}%"])
-    wb.save(archivo)
-
-# Vista del test
 def test(request):
     if request.method == "POST":
-        nombre = request.POST.get("nombre", "Invitado")
-        genero = request.POST.get("genero", "No definido")
+        nombre = request.POST.get("nombre")
+        genero = request.POST.get("genero")
+        # Recoger respuestas de las 10 preguntas
+        respuestas = []
+        for i in range(1, 11):
+            valor = int(request.POST.get(f"pregunta{i}", 0))
+            respuestas.append(valor)
         
-        # Preguntas del test: 10 preguntas
-        preguntas = [int(request.POST.get(f"q{i}", 0)) for i in range(1, 11)]
-        
-        puntaje = sum(preguntas)
-        porcentaje = int((puntaje / 40) * 100)  # 10 preguntas, max 4 cada una
+        promedio = sum(respuestas) / len(respuestas)
 
-        # Mensaje motivacional según porcentaje
-        if porcentaje < 40:
-            mensaje = "¡Ánimo! 🌸 Recuerda que cada día es una nueva oportunidad para brillar. Respira profundo y sonríe."
-        elif 40 <= porcentaje < 70:
-            mensaje = "¡Vas muy bien! 😊 Sigue cuidándote y disfrutando cada momento de tu bienestar."
+        # Mensajes motivacionales según el porcentaje
+        if promedio <= 1.5:
+            mensaje = "¡Ánimo! Puedes mejorar, respira y sigue adelante 💪"
+        elif promedio <= 3:
+            mensaje = "¡Muy bien! Continúa así y respira con tranquilidad 🙂"
         else:
-            mensaje = "¡Excelente! 🌟 Tu bienestar está en un nivel alto, sigue así y comparte tu alegría."
+            mensaje = "¡Excelente! Estás muy bien 👏"
 
-        # Guardar en Excel
-        guardar_resultado_excel(nombre, genero, puntaje, porcentaje)
-
-        # Datos para la gráfica
-        datos_grafica = {
-            "labels": [f"Q{i}" for i in range(1, 11)],
-            "valores": preguntas,
-            "colores": []
+        # Datos para gráfica
+        datos = {
+            "labels": [f"Pregunta {i}" for i in range(1, 11)],
+            "valores": respuestas,
+            "colores": ['#f99','#9f9','#99f','#ff9','#f9f','#9ff','#fc9','#c9f','#9fc','#ffc']
         }
 
-        # Colores según puntaje individual
-        for valor in preguntas:
-            if valor <= 1:
-                datos_grafica["colores"].append("#f87171")  # rojo bajo
-            elif valor <= 3:
-                datos_grafica["colores"].append("#facc15")  # amarillo medio
-            else:
-                datos_grafica["colores"].append("#4ade80")  # verde alto
-
-        return render(request, "resultado.html", {
+        request.session['resultado'] = {
             "nombre": nombre,
             "genero": genero,
-            "puntaje": puntaje,
-            "porcentaje": porcentaje,
-            "mensaje": mensaje,
-            "datos": datos_grafica
-        })
-    
+            "respuestas": respuestas,
+            "promedio": promedio,
+            "mensaje": mensaje
+        }
+
+        return render(request, "resultado.html", {"datos": datos, "mensaje": mensaje, "promedio": promedio})
+
     return render(request, "test.html")
+
+
+def exportar_excel(request):
+    resultado = request.session.get('resultado')
+    if not resultado:
+        return HttpResponse("No hay resultados para exportar.")
+
+    # Crear archivo Excel en memoria
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet("Resultados")
+
+    # Formatos
+    bold = workbook.add_format({'bold': True})
+    center = workbook.add_format({'align': 'center', 'valign': 'vcenter'})
+
+    # Cabecera
+    worksheet.write('A1', 'Nombre', bold)
+    worksheet.write('B1', 'Género', bold)
+    worksheet.write('C1', 'Pregunta', bold)
+    worksheet.write('D1', 'Respuesta', bold)
+
+    # Escribir datos
+    fila = 1
+    nombre = resultado['nombre']
+    genero = resultado['genero']
+    for i, resp in enumerate(resultado['respuestas'], start=1):
+        worksheet.write(fila, 0, nombre)
+        worksheet.write(fila, 1, genero)
+        worksheet.write(fila, 2, f"Pregunta {i}")
+        worksheet.write(fila, 3, resp, center)
+        fila += 1
+
+    # Promedio
+    worksheet.write(fila, 2, "Promedio", bold)
+    worksheet.write_formula(fila, 3, f"=AVERAGE(D2:D{fila})")
+
+    workbook.close()
+    output.seek(0)
+
+    response = HttpResponse(
+        output.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=resultado.xlsx'
+    return response
