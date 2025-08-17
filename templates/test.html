@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Test de Personalidad{% endblock %}
+{% block content %}
+<h2>2) Responde las preguntas</h2>
+<p class="muted">¡Vamos, {{ nombre }}! Marca la opción que mejor te represente.</p>
+<form method="post" class="card">
+  {% csrf_token %}
+  {% for field in form %}
+    <div class="q-block">
+      <label class="q-label">{{ field.label }}</label>
+      <div class="q-options">
+        {{ field }}
+      </div>
+    </div>
+  {% endfor %}
+  <button class="btn" type="submit">Ver resultados</button>
+</form>
+{% endblock %}

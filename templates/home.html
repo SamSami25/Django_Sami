@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Inicio - Django_Sami{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Siéntete <span class="accent">bonit@</span> y <span class="accent">protegid@</span></h1>
+  <p>Haz un test de personalidad diseñado para <strong>mujeres</strong> y <strong>hombres</strong>, 
+     y recibe tips de belleza y seguridad personalizados.</p>
+  <a class="btn" href="{% url 'iniciar' %}">Comenzar ahora</a>
+</section>
+{% endblock %}
