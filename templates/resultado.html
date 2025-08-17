@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resultado</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #fce7f3; font-family: Arial, sans-serif; text-align: center; }
+        h1 { color: #9d174d; }
+        canvas { margin-top: 20px; }
+        p.mensaje { font-size:1.2em; color:#7c3aed; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>¡Hola {{ nombre }}! 👋</h1>
+    <p>Género: {{ genero }}</p>
+    <p>Puntaje: {{ puntaje }} / 40</p>
+    <p>Porcentaje: {{ porcentaje }}%</p>
+
+    <p class="mensaje">{{ mensaje }}</p>
+
+    <canvas id="grafico" width="400" height="200"></canvas>
+
+    <script>
+        const ctx = document.getElementById('grafico').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ datos.labels|safe }},
+                datasets: [{
+                    label: 'Nivel por pregunta',
+                    data: {{ datos.valores|safe }},
+                    backgroundColor: {{ datos.colores|safe }},
+                    borderColor: '#000',
+                    borderWidth: 1
+                }]
+            },
+            options: { scales: { y: { beginAtZero: true, max: 4 } } }
+        });
+    </script>
+</body>
+</html>

@@ -1,6 +1,5 @@
 # Python / Django
 __pycache__/
-__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -8,12 +7,20 @@ __pycache__/
 db.sqlite3
 .DS_Store
 
+# Ignorar archivos temporales
+*.log
+*.pot
+*.pyc
+*.pyo
+*.db
+*.sqlite3-journal
+
 # Entornos
 env/
 venv/
 ENV/
 
-# Django / static / media (si aplicara)
+# Django / static / media
 staticfiles/
 media/
 

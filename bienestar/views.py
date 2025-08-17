@@ -1,79 +1,67 @@
-from django.shortcuts import render, redirect
-from django.urls import reverse
-from django.db.models import Q
-from .forms import InicioForm, PreguntasForm
-from .models import Genero, Pregunta, Opcion, Envio, TipBelleza, TipSeguridad, Afirmacion, Categoria, Audiencia
+from django.shortcuts import render
+import openpyxl
+import os
 
-def home(request):
-    return render(request, "home.html")
+# Guardar resultados en Excel
+def guardar_resultado_excel(nombre, genero, puntaje, porcentaje):
+    archivo = "resultados.xlsx"
+    if not os.path.exists(archivo):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Nombre", "Género", "Puntaje", "Porcentaje"])
+        wb.save(archivo)
 
-def iniciar_test(request):
-    if request.method == "POST":
-        form = InicioForm(request.POST)
-        if form.is_valid():
-            nombre = form.cleaned_data["nombre"]
-            genero = form.cleaned_data["genero"]
-            # Pasamos por querystring a la vista del test
-            return redirect(f"{reverse('test')}?nombre={nombre}&genero={genero}")
-    else:
-        form = InicioForm()
-    return render(request, "iniciar.html", {"form": form})
+    wb = openpyxl.load_workbook(archivo)
+    ws = wb.active
+    ws.append([nombre, genero, puntaje, f"{porcentaje}%"])
+    wb.save(archivo)
 
+# Vista del test
 def test(request):
-    nombre = request.GET.get("nombre")
-    genero = request.GET.get("genero")
-    if not nombre or genero not in dict(Genero.choices):
-        return redirect("iniciar")
-
     if request.method == "POST":
-        form = PreguntasForm(genero, data=request.POST)
-        if form.is_valid():
-            # Calcular puntajes
-            puntajes = {
-                Categoria.CONFIANZA: 0,
-                Categoria.EMPATIA: 0,
-                Categoria.RESILIENCIA: 0,
-                Categoria.CALMA: 0,
-            }
-            respuestas = {}
-            for key, value in form.cleaned_data.items():
-                if key.startswith("q_"):
-                    opcion = Opcion.objects.select_related("pregunta").get(id=int(value))
-                    cat = opcion.pregunta.categoria
-                    puntajes[cat] += opcion.peso
-                    respuestas[str(opcion.pregunta.id)] = int(value)
+        nombre = request.POST.get("nombre", "Invitado")
+        genero = request.POST.get("genero", "No definido")
+        
+        # Preguntas del test: 10 preguntas
+        preguntas = [int(request.POST.get(f"q{i}", 0)) for i in range(1, 11)]
+        
+        puntaje = sum(preguntas)
+        porcentaje = int((puntaje / 40) * 100)  # 10 preguntas, max 4 cada una
 
-            # Determinar categoría top
-            categoria_top = max(puntajes, key=puntajes.get)
+        # Mensaje motivacional según porcentaje
+        if porcentaje < 40:
+            mensaje = "¡Ánimo! 🌸 Recuerda que cada día es una nueva oportunidad para brillar. Respira profundo y sonríe."
+        elif 40 <= porcentaje < 70:
+            mensaje = "¡Vas muy bien! 😊 Sigue cuidándote y disfrutando cada momento de tu bienestar."
+        else:
+            mensaje = "¡Excelente! 🌟 Tu bienestar está en un nivel alto, sigue así y comparte tu alegría."
 
-            envio = Envio.objects.create(
-                nombre=nombre,
-                genero=genero,
-                punt_confianza=puntajes[Categoria.CONFIANZA],
-                punt_empatia=puntajes[Categoria.EMPATIA],
-                punt_resiliencia=puntajes[Categoria.RESILIENCIA],
-                punt_calma=puntajes[Categoria.CALMA],
-                categoria_top=categoria_top,
-                respuestas=respuestas,
-            )
+        # Guardar en Excel
+        guardar_resultado_excel(nombre, genero, puntaje, porcentaje)
 
-            # Tips y afirmaciones (genero o para ambos [None])
-            tips_b = TipBelleza.objects.filter(Q(genero=genero) | Q(genero__isnull=True))[:5]
-            tips_s = TipSeguridad.objects.filter(Q(genero=genero) | Q(genero__isnull=True))[:5]
-            afirm = Afirmacion.objects.filter(Q(genero=genero) | Q(genero__isnull=True)).order_by('?')[:5]
+        # Datos para la gráfica
+        datos_grafica = {
+            "labels": [f"Q{i}" for i in range(1, 11)],
+            "valores": preguntas,
+            "colores": []
+        }
 
-            contexto = {
-                "envio": envio,
-                "nombre": nombre,
-                "genero": dict(Genero.choices)[genero],
-                "puntajes": puntajes,
-                "categoria_top": dict(Categoria.choices)[categoria_top],
-                "tips_belleza": tips_b,
-                "tips_seguridad": tips_s,
-                "afirmaciones": afirm,
-            }
-            return render(request, "resultado.html", contexto)
-    else:
-        form = PreguntasForm(genero)
+        # Colores según puntaje individual
+        for valor in preguntas:
+            if valor <= 1:
+                datos_grafica["colores"].append("#f87171")  # rojo bajo
+            elif valor <= 3:
+                datos_grafica["colores"].append("#facc15")  # amarillo medio
+            else:
+                datos_grafica["colores"].append("#4ade80")  # verde alto
 
-    return render(request, "test.html", {"form": form, "nombre": nombre})
+        return render(request, "resultado.html", {
+            "nombre": nombre,
+            "genero": genero,
+            "puntaje": puntaje,
+            "porcentaje": porcentaje,
+            "mensaje": mensaje,
+            "datos": datos_grafica
+        })
+    
+    return render(request, "test.html")

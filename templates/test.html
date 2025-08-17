@@ -1,18 +1,42 @@
-{% extends "base.html" %}
-{% block title %}Test de Personalidad{% endblock %}
-{% block content %}
-<h2>2) Responde las preguntas</h2>
-<p class="muted">¡Vamos, {{ nombre }}! Marca la opción que mejor te represente.</p>
-<form method="post" class="card">
-  {% csrf_token %}
-  {% for field in form %}
-    <div class="q-block">
-      <label class="q-label">{{ field.label }}</label>
-      <div class="q-options">
-        {{ field }}
-      </div>
-    </div>
-  {% endfor %}
-  <button class="btn" type="submit">Ver resultados</button>
-</form>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Test de Bienestar</title>
+    <style>
+        body { background: #fce7f3; font-family: Arial, sans-serif; text-align: center; }
+        h1 { color: #9d174d; }
+        form { background: #f3e8ff; display: inline-block; padding: 20px; border-radius: 15px; }
+        input[type="text"] { padding: 8px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; }
+        .opcion { display: inline-block; background: #f9e0f9; padding: 10px 20px; margin: 5px; border-radius: 15px; cursor: pointer; transition: 0.3s; }
+        .opcion:hover { background: #d8b9f2; transform: scale(1.05); }
+        input[type="radio"] { display: none; }
+        button { padding: 10px 20px; border-radius: 10px; background: #c084fc; border: none; color: white; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #7c3aed; }
+    </style>
+</head>
+<body>
+    <h1>Test de Bienestar</h1>
+    <form method="POST">
+        {% csrf_token %}
+        <input type="text" name="nombre" placeholder="Ingresa tu nombre" required><br><br>
+
+        <label class="opcion"><input type="radio" name="genero" value="F" required> 👩 Mujer</label>
+        <label class="opcion"><input type="radio" name="genero" value="M" required> 👨 Hombre</label><br><br>
+
+        {% for i in 1|to:10 %}
+        <p>Pregunta {{ i }}: Escribe tu respuesta</p>
+        <select name="q{{ i }}" required>
+            <option value="0">Nada</option>
+            <option value="1">Un poco</option>
+            <option value="2">Regular</option>
+            <option value="3">Mucho</option>
+            <option value="4">Totalmente</option>
+        </select>
+        {% endfor %}
+
+        <br><br>
+        <button type="submit">Ver Resultado</button>
+    </form>
+</body>
+</html>
